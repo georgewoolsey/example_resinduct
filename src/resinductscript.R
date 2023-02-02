@@ -55,7 +55,7 @@ csv_outputs <- "csv_outputs"
 # get list of text files
 var_txt_files <- list.files(file_location, pattern = "*.txt")
 # create output directory for csv's 
-output_dir <- paste0(file_location, csv_outputs, "/")
+output_dir <- paste0(file_location, "/", csv_outputs, "/")
 if(!dir.exists(output_dir)){
   dir.create(output_dir)
 }
