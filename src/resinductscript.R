@@ -69,6 +69,7 @@ if(!dir.exists(output_dir)){
 setwd(file_location) # set directory
 # loop through to output dated csv for each txt file
 for(this_file in 1:length(var_txt_files)) {
+  print(paste("working on ...." , var_txt_files[this_file]))
   year <- year_start
   data <- read.table(var_txt_files[this_file])     # read in .txt file
   sampleID <- var_txt_files[this_file] %>% 
@@ -99,7 +100,9 @@ for(this_file in 1:length(var_txt_files)) {
             , paste0(output_dir, dated_file)
             , row.names=FALSE
           )     # write out new (.csv) file
+  print(paste("done with ...." , var_txt_files[this_file]))
 }
+
 #####################################################################################
 #### 2. COMBINING INDIVIDUAL .CSV FILES INTO ONE FILE ####
 
@@ -124,6 +127,7 @@ write.csv(all_data, file = paste0(output_dir, "all_data.csv"), row.names=FALSE) 
 data <- read.csv(paste0(output_dir, "all_data.csv"))     # read in .csv file created in previous section
 data <- subset(data, data[,3] != ".")     # remove breaks between years
 
+if(FALSE==TRUE){ ## THIS IS OLD CODE FROM HOOD ET AL.
 # calculates: total duct area (TDA), mean duct size (size), duct production (prod)
 temp_tda <- aggregate(data$Area, by = list("SampleID" = data$SampleID, "Year" = data$Year), FUN = sum)
 temp_size <- aggregate(data$Area, by = list("SampleID" = data$SampleID, "Year" = data$Year), FUN = mean)
@@ -136,11 +140,28 @@ fun1 <- function(x) {     # counts number of rows, unless a 0 value, which retur
   }
 }
 
-temp_prod <- aggregate(data$Area, by = list("SampleID" = data$SampleID, "Year" = data$Year), FUN = fun1)
+# temp_prod <- aggregate(data$Area, by = list("SampleID" = data$SampleID, "Year" = data$Year), FUN = fun1)
+temp_prod <- data %>%
+  dplyr::group_by(SampleID, Year) %>%
+  dplyr::summarize(
+    x = sum( ifelse(Area != 0, 1, 0) )
+  ) %>%
+  dplyr::arrange(Year, SampleID)
 
 # put all metrics into one data frame; convert TDA and size to mm since ImageJ records in inches
 duct_metrics <- data.frame("SampleID" = temp_tda$SampleID, "Year" = temp_tda$Year,
                            "Total_Duct_Area" =  temp_tda$x*645.16, "Duct_Size" = temp_size$x*645.16, "Duct_Production" = temp_prod$x)
+}
+# NEW AND IMPROVED
+duct_metrics <- data %>%
+  dplyr::group_by(SampleID, Year) %>%
+  dplyr::summarize(
+    Total_Duct_Area = sum(Area*645.16)
+    , Duct_Size = mean(Area*645.16, na.rm = T)
+    , Duct_Production = sum( ifelse(Area != 0, 1, 0) )
+  ) %>%
+  dplyr::arrange(Year, SampleID) %>%
+  dplyr::ungroup()
 
 # if no ducts were produced in the sampled portion of the ring, then a duct size of 0 would
 # falsely decrease average resin duct size because almost surely ducts exist elsewhere in the ring,
